@@ -4,9 +4,7 @@ mcp-servers.json
 tmp
 *.class
 
-#
 CLAUDE.md
-.claude
 HELP.md
 target/
 !.mvn/wrapper/maven-wrapper.jar
