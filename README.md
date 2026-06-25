@@ -14,16 +14,16 @@
 
 ## 技术栈
 
-| 层级 | 技术 |
-|------|------|
-| 后端框架 | Java 21 · Spring Boot 3.4 · Spring AI 1.0 |
-| AI 模型 | 阿里云 DashScope (qwen-plus) · Ollama |
-| RAG | SimpleVectorStore 内存向量库 · Markdown 文档解析 · 查询重写 · 关键词增强 |
-| 工具与协议 | @Tool 注解 · MCP 模型上下文协议 · 高德地图 MCP Server |
-| 智能体 | ReAct Agent (BaseAgent → ToolCallAgent → MyManus) |
-| 对话记忆 | FileBasedChatMemory 文件持久化 |
-| 前端 | Vue 3 · Vite · SSE 流式通信 |
-| 工具库 | Hutool · iText PDF · Jsoup · Knife4j
+| 层级 | 技术                                                                   |
+|------|----------------------------------------------------------------------|
+| 后端框架 | Java 21 · Spring Boot 3.4 · Spring AI 1.0                            |
+| AI 模型 | 阿里云 DashScope (qwen-plus) · Ollama                                   |
+| RAG | SimpleVectorStore 内存向量库 ·PGVector向量数据库· Markdown 文档解析 · 查询重写 · 关键词增强 |
+| 工具与协议 | @Tool 注解 · MCP 模型上下文协议 · 高德地图 MCP Server                             |
+| 智能体 | ReAct Agent (BaseAgent → ToolCallAgent → MyManus)                    |
+| 对话记忆 | FileBasedChatMemory 文件持久化                                            |
+| 前端 | Vue 3 · Vite · SSE 流式通信                                              |
+| 工具库 | Hutool · iText PDF · Jsoup · Knife4j                                 
 
 ## 项目架构
 
