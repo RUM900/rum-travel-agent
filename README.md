@@ -58,7 +58,7 @@ rumagent/
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/RUM/rumagent.git
+git clone https://github.com/RUM900/rum-travel-agent.git
 cd rumagent
 ```
 
