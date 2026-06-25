@@ -4,11 +4,9 @@ mcp-servers.json
 tmp
 *.class
 
-# 个人文档（面试准备/开发笔记）
+#
 CLAUDE.md
-IMPROVEMENT_PLAN.md
-INTERVIEW_PREP.md
-
+.claude
 HELP.md
 target/
 !.mvn/wrapper/maven-wrapper.jar
@@ -42,3 +40,5 @@ build/
 
 ### VS Code ###
 .vscode/
+### 字体文件（版权）
+src/main/resources/static/fonts/
