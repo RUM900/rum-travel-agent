@@ -66,7 +66,6 @@ public class ConversationController {
     @DeleteMapping("/{conversationId}")
     public Result<Void> deleteConversation(@PathVariable String conversationId) {
         fileBasedChatMemory.clear(conversationId);
-        log.info("对话已删除: {}", conversationId);
         return Result.ok(null);
     }
 
