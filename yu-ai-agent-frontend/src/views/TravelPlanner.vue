@@ -1,29 +1,33 @@
 <template>
   <div class="page">
-    <!-- 背景光晕 -->
-    <div class="bg-orbs" aria-hidden="true">
-      <div class="orb orb-1"></div>
-      <div class="orb orb-2"></div>
+    <!-- Ambient background -->
+    <div class="bg-ambient" aria-hidden="true">
+      <div class="orb orb--teal"></div>
+      <div class="orb orb--subtle"></div>
     </div>
 
-    <!-- 顶部栏 -->
+    <!-- Top bar -->
     <header class="bar">
-      <button class="back-btn" @click="$router.push('/')" aria-label="返回">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      <button class="bar-btn" @click="$router.push('/')" aria-label="返回首页">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m15 18-6-6 6-6"/>
+        </svg>
       </button>
-      <div class="bar-mid">
-        <span class="bar-logo">RUM</span>
-        <span class="bar-sep">/</span>
-        <span class="bar-label">旅行规划</span>
+
+      <div class="bar-center">
+        <span class="bar-brand">RUM</span>
+        <span class="bar-divider">/</span>
+        <span class="bar-page">旅行规划</span>
       </div>
-      <button class="sidebar-toggle" @click="sidebarOpen = !sidebarOpen" aria-label="对话列表">
+
+      <button class="bar-btn" @click="sidebarOpen = !sidebarOpen" aria-label="对话列表">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
           <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
         </svg>
       </button>
     </header>
 
-    <!-- 主体区域：侧边栏 + 聊天区 -->
+    <!-- Main area: sidebar + chat -->
     <div class="main-area">
       <ConversationSidebar
         :conversations="conversations"
@@ -64,7 +68,7 @@ let es = null
 
 const add = (c, u) => msgs.value.push({ content: c, isUser: u, time: Date.now() })
 
-// ── 加载对话列表 ──
+// ── Conversation list ──
 const listError = ref(false)
 const refreshList = async () => {
   listError.value = false
@@ -72,12 +76,12 @@ const refreshList = async () => {
     const res = await listConversations()
     conversations.value = res.data.data || []
   } catch (e) {
-    console.error('加载对话列表失败:', e)
+    console.error('Failed to load conversation list:', e)
     listError.value = true
   }
 }
 
-// ── 新建对话 ──
+// ── New conversation ──
 const newChat = () => {
   if (es) es.close()
   msgs.value = []
@@ -87,7 +91,7 @@ const newChat = () => {
   add('你好，我是你的旅行规划助手。想去哪里、计划几天、预算和偏好告诉我，我来为你定制行程。', false)
 }
 
-// ── 切换历史对话 ──
+// ── Load conversation ──
 const loadConversation = async (id) => {
   if (id === cid.value) { sidebarOpen.value = false; return }
   if (es) es.close()
@@ -103,25 +107,22 @@ const loadConversation = async (id) => {
     conn.value = 'disconnected'
     sidebarOpen.value = false
   } catch (e) {
-    console.error('加载对话失败:', e)
+    console.error('Failed to load conversation:', e)
   }
 }
 
-// ── 删除对话 ──
+// ── Delete conversation ──
 const removeConversation = async (id) => {
   try {
     await deleteConversation(id)
     conversations.value = conversations.value.filter(c => c.conversationId !== id)
-    // 如果删除的是当前对话，自动新建
-    if (id === cid.value) {
-      newChat()
-    }
+    if (id === cid.value) newChat()
   } catch (e) {
-    console.error('删除对话失败:', e)
+    console.error('Failed to delete conversation:', e)
   }
 }
 
-// ── 发送消息 ──
+// ── Send message ──
 const send = (m) => {
   add(m, true)
   if (es) es.close()
@@ -143,9 +144,7 @@ const send = (m) => {
 }
 
 onMounted(async () => {
-  // 先拉对话列表
   await refreshList()
-  // 如果已有历史对话，默认打开最近的一条；否则新建
   if (conversations.value.length > 0) {
     const latestId = conversations.value[0].conversationId
     await loadConversation(latestId)
@@ -153,6 +152,7 @@ onMounted(async () => {
     newChat()
   }
 })
+
 onBeforeUnmount(() => { if (es) es.close() })
 </script>
 
@@ -161,82 +161,110 @@ onBeforeUnmount(() => { if (es) es.close() })
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  background: var(--bg-base);
   position: relative;
   overflow: hidden;
 }
 
-/* ── 背景 ── */
-.bg-orbs { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
-.orb { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.35; }
-.orb-1 {
-  width: 500px; height: 500px;
-  top: -20%; right: -15%;
-  background: radial-gradient(circle, var(--blue-glow) 0%, transparent 70%);
-}
-.orb-2 {
-  width: 400px; height: 400px;
-  bottom: -15%; left: -10%;
-  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+/* ── Ambient background ── */
+.bg-ambient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
 }
 
-/* ── 顶栏 ── */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.3;
+}
+
+.orb--teal {
+  width: 500px; height: 500px;
+  top: -15%; right: -12%;
+  background: radial-gradient(circle, var(--teal-glow) 0%, transparent 70%);
+  animation: float 18s ease-in-out infinite alternate;
+}
+
+.orb--subtle {
+  width: 350px; height: 350px;
+  bottom: -10%; left: -8%;
+  background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+  opacity: 0.2;
+  animation: float 22s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes float {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(20px, 15px) scale(1.05); }
+}
+
+/* ── Top bar ── */
 .bar {
   display: flex;
   align-items: center;
-  padding: var(--s-3) var(--s-4);
-  background: rgba(9,9,11,0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--bd);
+  padding: var(--space-2) var(--space-3);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-bottom: 1px solid var(--glass-border);
   flex-shrink: 0;
-  min-height: 54px;
+  min-height: 52px;
   position: relative;
   z-index: 11;
 }
 
-.back-btn {
-  width: 40px; height: 40px;
+.bar-btn {
+  width: 38px; height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--r-sm);
-  color: var(--t2);
-  transition: all var(--fast) var(--ease);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
   border: none;
   background: transparent;
   cursor: pointer;
   flex-shrink: 0;
 }
-.back-btn:hover { color: var(--t1); background: rgba(255,255,255,0.05); }
 
-.bar-mid { flex: 1; display: flex; align-items: center; justify-content: center; gap: var(--s-2); }
-.bar-logo {
+.bar-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.bar-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.bar-brand {
   font-family: var(--font-display);
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--t1);
-  letter-spacing: 0.06em;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
 }
-.bar-sep { color: var(--t3); font-weight: 300; }
-.bar-label { font-size: 0.88rem; color: var(--t2); font-weight: 400; }
 
-.sidebar-toggle {
-  width: 40px; height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--r-sm);
-  color: var(--t2);
-  transition: all var(--fast) var(--ease);
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  flex-shrink: 0;
+.bar-divider {
+  color: var(--text-tertiary);
+  font-weight: var(--weight-light);
 }
-.sidebar-toggle:hover { color: var(--t1); background: rgba(255,255,255,0.05); }
 
-/* ── 主区域 ── */
+.bar-page {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: var(--weight-regular);
+}
+
+/* ── Main area ── */
 .main-area {
   flex: 1;
   display: flex;
@@ -245,5 +273,10 @@ onBeforeUnmount(() => { if (es) es.close() })
   z-index: 1;
 }
 
-.chat-zone { flex: 1; overflow: hidden; min-width: 0; }
+.chat-zone {
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+  background: var(--bg-base);
+}
 </style>

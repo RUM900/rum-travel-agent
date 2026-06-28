@@ -1,38 +1,93 @@
 <template>
   <div class="chat">
+    <!-- Message list -->
     <div class="msg-list" ref="box">
-      <div v-for="(m, i) in messages" :key="i" class="row" :class="{ me: m.isUser }">
+      <!-- Welcome message when empty -->
+      <div v-if="messages.length === 0" class="welcome">
+        <div class="welcome-icon" :class="aiType">
+          <AiAvatarFallback :type="aiType" :size="32" />
+        </div>
+        <p class="welcome-text">
+          {{ aiType === 'travel' ? '告诉我你的旅行计划，我来帮你定制完美行程' : '有什么问题想问？我随时在线帮助你' }}
+        </p>
+      </div>
+
+      <div
+        v-for="(m, i) in messages"
+        :key="i"
+        class="row"
+        :class="{ me: m.isUser }"
+      >
+        <!-- AI Avatar -->
         <div v-if="!m.isUser" class="av">
-          <AiAvatarFallback :type="aiType" />
+          <AiAvatarFallback :type="aiType" :size="16" />
         </div>
 
+        <!-- Bubble -->
         <div class="bubble" :class="{ them: !m.isUser, mine: m.isUser }">
-          <div class="text">
-            {{ m.content }}
-            <span v-if="!m.isUser && status === 'connecting' && i === messages.length - 1" class="caret" aria-hidden="true"></span>
+          <div class="bubble-inner">
+            <div class="text">
+              {{ m.content }}
+              <span
+                v-if="!m.isUser && connectionStatus === 'connecting' && i === messages.length - 1 && m.content"
+                class="caret"
+                aria-hidden="true"
+              ></span>
+            </div>
+            <!-- Typing indicator -->
+            <div
+              v-if="!m.isUser && connectionStatus === 'connecting' && i === messages.length - 1 && !m.content"
+              class="typing"
+            >
+              <span></span><span></span><span></span>
+            </div>
           </div>
           <time class="time" :datetime="new Date(m.time).toISOString()">{{ fmt(m.time) }}</time>
         </div>
 
+        <!-- User Avatar -->
         <div v-if="m.isUser" class="av me-av" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
         </div>
+      </div>
+
+      <!-- Connection status -->
+      <div v-if="connectionStatus === 'error'" class="status-bar error">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        连接失败，请重试
       </div>
     </div>
 
-    <div class="input-row">
-      <input
-        ref="inputEl"
-        v-model="text"
-        @keydown.enter="send"
-        placeholder="输入消息…"
-        :disabled="status === 'connecting'"
-        aria-label="消息输入框"
-        autocomplete="off"
-      />
-      <button @click="send" :disabled="status === 'connecting' || !text.trim()" aria-label="发送">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-      </button>
+    <!-- Input area -->
+    <div class="input-area">
+      <div class="input-row">
+        <input
+          ref="inputEl"
+          v-model="text"
+          @keydown.enter="send"
+          :placeholder="connectionStatus === 'connecting' ? 'AI 正在思考…' : '输入你的问题…'"
+          :disabled="connectionStatus === 'connecting'"
+          aria-label="消息输入框"
+          autocomplete="off"
+        />
+        <button
+          class="send-btn"
+          @click="send"
+          :disabled="connectionStatus === 'connecting' || !text.trim()"
+          aria-label="发送消息"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+      <p class="input-hint">Enter 发送 · 支持中文</p>
     </div>
   </div>
 </template>
@@ -41,7 +96,7 @@
 import { ref, nextTick, watch, onMounted } from 'vue'
 import AiAvatarFallback from './AiAvatarFallback.vue'
 
-const p = defineProps({
+const props = defineProps({
   messages: { type: Array, default: () => [] },
   connectionStatus: { type: String, default: 'disconnected' },
   aiType: { type: String, default: 'travel' }
@@ -51,155 +106,345 @@ const emit = defineEmits(['send-message'])
 const text = ref('')
 const box = ref(null)
 const inputEl = ref(null)
-const status = p.connectionStatus
 
 const send = () => {
-  if (!text.value.trim()) return
-  emit('send-message', text.value)
+  if (!text.value.trim() || props.connectionStatus === 'connecting') return
+  emit('send-message', text.value.trim())
   text.value = ''
 }
 
-const fmt = ts => new Date(ts).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+const fmt = ts => {
+  const d = new Date(ts)
+  return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+}
 
 const scroll = async () => {
   await nextTick()
-  if (box.value) box.value.scrollTop = box.value.scrollHeight
+  if (box.value) {
+    box.value.scrollTo({ top: box.value.scrollHeight, behavior: 'smooth' })
+  }
 }
 
-watch(() => p.messages.length, scroll)
-watch(() => p.messages.map(m => m.content).join(''), scroll)
-onMounted(() => { scroll(); inputEl.value?.focus() })
+watch(() => props.messages.length, scroll)
+watch(
+  () => props.messages.map(m => m.content).join(''),
+  () => { nextTick(scroll) }
+)
+
+onMounted(() => {
+  scroll()
+  inputEl.value?.focus()
+})
 </script>
 
 <style scoped>
+/* ══════════════════════════════════════
+   CHAT ROOM — Premium Messaging UI
+   ══════════════════════════════════════ */
+
 .chat {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: var(--s-4) 0;
 }
 
+/* ── Message List ── */
 .msg-list {
   flex: 1;
   overflow-y: auto;
-  padding: var(--s-2) 0 var(--s-4);
+  padding: var(--space-4) var(--space-2);
   scroll-behavior: smooth;
+  overscroll-behavior: contain;
 }
 
+/* ── Welcome ── */
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60%;
+  gap: var(--space-5);
+  padding: var(--space-12) var(--space-6);
+  text-align: center;
+}
+
+.welcome-icon {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-default);
+}
+
+.welcome-icon.travel {
+  background: var(--teal-soft);
+  border-color: rgba(45, 212, 191, 0.2);
+}
+
+.welcome-icon.super {
+  background: var(--primary-soft);
+  border-color: rgba(129, 140, 248, 0.2);
+}
+
+.welcome-text {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  font-weight: var(--weight-light);
+  max-width: 320px;
+  line-height: var(--leading-relaxed);
+}
+
+/* ── Message Row ── */
 .row {
   display: flex;
   align-items: flex-end;
-  gap: var(--s-3);
-  margin-bottom: var(--s-5);
-  max-width: 78%;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  max-width: 80%;
+  animation: msgIn var(--duration-mid) var(--ease-out);
 }
-.me { margin-left: auto; flex-direction: row-reverse; }
 
-/* Avatar */
+.me {
+  margin-left: auto;
+  flex-direction: row-reverse;
+}
+
+@keyframes msgIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Avatar ── */
 .av {
-  width: 34px; height: 34px;
+  width: 32px; height: 32px;
   border-radius: 50%;
   flex-shrink: 0;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255,255,255,0.06);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
 }
+
 .me-av {
-  background: rgba(59,130,246,0.2);
-  color: var(--blue);
+  background: rgba(129, 140, 248, 0.15);
+  color: var(--primary);
+  border-color: rgba(129, 140, 248, 0.2);
 }
 
-/* Bubble */
+/* ── Bubble ── */
 .bubble {
-  padding: var(--s-3) var(--s-4);
-  border-radius: var(--r-md);
-  font-size: 0.93rem;
-  line-height: 1.65;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
-.them {
-  background: var(--bg-card);
-  color: var(--t1);
-  border-bottom-left-radius: var(--r-sm);
-  border: 1px solid var(--bd);
+.bubble-inner {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  word-break: break-word;
 }
 
-.mine {
-  background: rgba(59,130,246,0.15);
-  color: #e2e8f0;
-  border-bottom-right-radius: var(--r-sm);
-  border: 1px solid rgba(59,130,246,0.2);
+.them .bubble-inner {
+  background: var(--bubble-ai);
+  border: 1px solid var(--bubble-ai-border);
+  border-bottom-left-radius: var(--radius-sm);
+  color: var(--text-primary);
 }
 
-.text { white-space: pre-wrap; word-break: break-word; }
+.mine .bubble-inner {
+  background: var(--bubble-user);
+  border: 1px solid var(--bubble-user-border);
+  border-bottom-right-radius: var(--radius-sm);
+  color: #e8eaf6;
+}
 
+.text {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* ── Time ── */
 .time {
   display: block;
-  font-size: 0.62rem;
-  opacity: 0.35;
-  margin-top: var(--s-1);
-  text-align: right;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: 3px;
+  padding: 0 2px;
 }
 
-/* Caret */
+.me .time { text-align: right; }
+
+/* ── Typing indicator ── */
+.typing {
+  display: flex;
+  gap: 4px;
+  padding: 2px 0;
+}
+
+.typing span {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  animation: typeBounce 1.4s ease-in-out infinite;
+}
+
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typeBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30%           { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ── Caret ── */
 .caret {
   display: inline-block;
-  width: 2px; height: 1em;
-  background: var(--accent);
-  margin-left: 2px;
+  width: 2px; height: 1.1em;
+  background: var(--primary);
+  margin-left: 1px;
   vertical-align: text-bottom;
-  animation: pulse 0.9s var(--ease) infinite;
+  border-radius: 1px;
+  animation: blink 1s step-end infinite;
 }
-@keyframes pulse { 0%,100%{opacity:0} 50%{opacity:1} }
 
-/* Input */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+/* ── Status Bar ── */
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  margin: var(--space-3) auto;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  max-width: fit-content;
+}
+
+.status-bar.error {
+  background: var(--error-soft);
+  color: var(--error);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+/* ── Input Area ── */
+.input-area {
+  flex-shrink: 0;
+  padding: var(--space-3) var(--space-2) var(--space-3);
+}
+
 .input-row {
   display: flex;
-  gap: var(--s-2);
-  padding: var(--s-3) 0 0;
-  border-top: 1px solid var(--bd);
-  flex-shrink: 0;
+  gap: var(--space-2);
+  align-items: center;
 }
 
 .input-row input {
   flex: 1;
-  border: 1px solid var(--bd-strong);
-  border-radius: var(--r-sm);
-  padding: var(--s-3) var(--s-4);
-  font-size: 0.93rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-base);
   font-family: var(--font-body);
+  font-weight: var(--weight-regular);
   outline: none;
   background: var(--bg-input);
-  color: var(--t1);
-  transition: border-color var(--fast) var(--ease),
-              box-shadow var(--fast) var(--ease);
-  min-height: 46px;
+  color: var(--text-primary);
+  min-height: 48px;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
-.input-row input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-.input-row input::placeholder { color: var(--t3); }
-.input-row input:disabled { opacity: 0.3; }
 
-.input-row button {
-  width: 46px; height: 46px;
-  border-radius: var(--r-sm);
-  background: var(--accent);
-  color: var(--t-inv);
+.input-row input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.input-row input::placeholder {
+  color: var(--text-tertiary);
+  font-weight: var(--weight-light);
+}
+
+.input-row input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Send Button ── */
+.send-btn {
+  width: 48px; height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all var(--fast) var(--ease);
+  transition:
+    transform var(--duration-fast) var(--ease-spring),
+    box-shadow var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
 }
-.input-row button:hover:not(:disabled) { transform: scale(1.04); box-shadow: var(--sh-glow); }
-.input-row button:active:not(:disabled) { transform: scale(0.97); }
-.input-row button:disabled { opacity: 0.25; transform: none; }
+
+.send-btn:hover:not(:disabled) {
+  transform: scale(1.06);
+  box-shadow: 0 0 20px var(--primary-glow);
+}
+
+.send-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.send-btn:disabled {
+  opacity: 0.25;
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* ── Input Hint ── */
+.input-hint {
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-2);
+  font-weight: var(--weight-light);
+}
+
+/* ══════════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════════ */
 
 @media (max-width: 700px) {
-  .row { max-width: 86%; }
+  .row {
+    max-width: 88%;
+  }
+
+  .bubble-inner {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+  }
+
+  .welcome-icon {
+    width: 60px; height: 60px;
+  }
 }
 </style>
